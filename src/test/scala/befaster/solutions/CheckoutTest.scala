@@ -27,43 +27,44 @@ class CheckoutTest extends FlatSpec with Matchers {
     result should contain theSameElementsAs List(GroupedSku("A", 3), GroupedSku("B", 1), GroupedSku("C", 2))
   }
 
+  it should "correctly apply getMoreOffers" in {
+    // Given
+    val  skus = "AAEABCCE"
+    val getMoreOffers = Map(
+      'E' -> (2, "B")
+    )
+
+    // When
+    val result = Checkout.applyGetMoreOffers(skus, getMoreOffers)
+
+    // Then
+    result shouldBe "AAEABCCEB"
+  }
+
+
+  it should "correctly apply getMoreOffers with many occurrences" in {
+    // Given
+    val  skus = "AEAEABEECCE"
+    val getMoreOffers = Map(
+      'E' -> (2, "B")
+    )
+
+    // When
+    val result = Checkout.applyGetMoreOffers(skus, getMoreOffers)
+
+    // Then
+    result shouldBe "AEAEABEECCEBB"
+  }
+
 
   it should "correctly apply special offers" in {
     // Given
     val skus = CheckoutStep(List(GroupedSku("A", 4), GroupedSku("B", 3), GroupedSku("C", 2)), 0)
 
     val specialOffers = Map(
-      "A" -> (3, 130),
-      "B" -> (2, 45),
+      "A" -> Map(3 -> 130, 5 -> 200),
+      "B" -> Map(2 -> 45)
     )
-
-    // When
-    val result = Checkout.applySpecialOffers(skus, specialOffers)
-
-    // Then
-    result.groupedSku should contain theSameElementsAs List(GroupedSku("A", 1), GroupedSku("B", 1), GroupedSku("C", 2))
-    result.price shouldBe 175
-  }
-
-  it should "remove sku from the basket if the special offer consumes all the items" in {
-    // Given
-    val skus = CheckoutStep(List(GroupedSku("A", 3), GroupedSku("B", 2), GroupedSku("C", 2)), 0)
-
-    val specialOffers = Map(
-      "A" -> (3, 130),
-      "B" -> (2, 45),
-    )
-
-    // When
-    val result = Checkout.applySpecialOffers(skus, specialOffers)
-
-    // Then
-    result shouldBe CheckoutStep(List(GroupedSku("C", 2)), 175)
-  }
-
-  it should "correcty apply remaining prices to the items" in {
-    // Given
-    val skus = CheckoutStep(List(GroupedSku("A", 3), GroupedSku("B", 2), GroupedSku("C", 2)), 100)
 
     val prices = Map(
       "A" -> 50,
@@ -73,9 +74,95 @@ class CheckoutTest extends FlatSpec with Matchers {
     )
 
     // When
-    val result = Checkout.applyPrices(skus, prices)
+    val result = Checkout.applySpecialOffers(skus, specialOffers, prices)
 
     // Then
-    result shouldBe (150 + 60 + 40 + 100)
+    result shouldBe 175 + 50 + 30 + 40
   }
+
+  it should "remove sku from the basket if the special offer consumes all the items" in {
+    // Given
+    val skus = CheckoutStep(List(GroupedSku("A", 3), GroupedSku("B", 2), GroupedSku("C", 2)), 0)
+
+    val specialOffers = Map(
+      "A" -> Map(3-> 130, 5-> 200),
+      "B" -> Map(2-> 45),
+    )
+
+    val prices = Map(
+      "A" -> 50,
+      "B" -> 30,
+      "C" -> 20,
+      "D" -> 15
+    )
+
+    // When
+    val result = Checkout.applySpecialOffers(skus, specialOffers, prices)
+
+    // Then
+    result shouldBe 215
+  }
+
+  it should "combine offers to get the best result possible" in {
+    // Given
+    val skus = CheckoutStep(List(GroupedSku("A", 8)), 0)
+
+    val specialOffers = Map(
+      "A" -> Map(3-> 130, 5-> 200)
+    )
+
+    val prices = Map("A" -> 50)
+
+    // When
+    val result = Checkout.applySpecialOffers(skus, specialOffers, prices)
+
+    // Then
+    result shouldBe 330
+  }
+
+  it should "calculate correct result for 6 A items with special offers" in {
+    // Given
+    val quantity = 6
+
+    val specialOffers = Map(3-> 130, 5-> 200)
+
+    val fixedPrice = 50
+
+    // When
+    val result = Checkout.findBestSpecialOffersCombination(quantity, specialOffers, fixedPrice, 0)
+
+    // Then
+    result shouldBe 250
+  }
+
+  it should "calculate correct result for 7 A items with special offers" in {
+    // Given
+    val quantity = 7
+
+    val specialOffers = Map(3-> 130, 5-> 200)
+
+    val fixedPrice = 50
+
+    // When
+    val result = Checkout.findBestSpecialOffersCombination(quantity, specialOffers, fixedPrice, 0)
+
+    // Then
+    result shouldBe 300
+  }
+
+  it should "calculate correct result for 9 A items with special offers" in {
+    // Given
+    val quantity = 9
+
+    val specialOffers = Map(3-> 130, 5-> 200)
+
+    val fixedPrice = 50
+
+    // When
+    val result = Checkout.findBestSpecialOffersCombination(quantity, specialOffers, fixedPrice, 0)
+
+    // Then
+    result shouldBe 380
+  }
+
 }
